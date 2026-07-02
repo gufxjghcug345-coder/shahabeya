@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🍺 Beers Catcher · box edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(145deg, #1e2b2c 0%, #162022 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      padding: 16px;
+    }
+
+    .game-wrapper {
+      background: #2d3f3f;
+      padding: 24px 24px 30px;
+      border-radius: 60px 60px 40px 40px;
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 215, 140, 0.2);
+      border-bottom: 6px solid #b68b5c;
+      transition: 0.2s;
+      position: relative;
+    }
+
+    .game-panel {
+      background: #0f1718;
+      border-radius: 40px 40px 30px 30px;
+      padding: 20px 20px 18px;
+      box-shadow: inset 0 0 0 2px #5a6e5e, inset 0 8px 12px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      aspect-ratio: 600 / 400;
+      background: #2c4b4b;
+      background-image: radial-gradient(circle at 20% 30%, #3d6b6b 1px, transparent 1px),
+                        radial-gradient(circle at 80% 70%, #3d6b6b 1px, transparent 1px);
+      background-size: 60px 60px, 80px 80px;
+      border-radius: 30px;
+      box-shadow: inset 0 -6px 0 #7c9c7c, inset 0 6px 10px rgba(0,0,0,0.5);
+      cursor: grab;
+      touch-action: none;
+      margin: 0 auto;
+    }
+
+    /* Top-right image overlay */
+    .top-right-image {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      border: 3px solid #b68b5c;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.6), inset 0 0 0 2px #5a6e5e;
+      object-fit: cover;
+      background: #1a2525;
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+
+    /* Unlock overlay for score 10 image */
+    .unlock-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      border-radius: 40px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .unlock-overlay.active {
+      display: flex;
+    }
+
+    .unlock-overlay img {
+      max-width: 70%;
+      max-height: 70%;
+      border-radius: 16px;
+      border: 4px solid #ffd700;
+      box-shadow: 0 0 40px rgba(255,215,0,0.3);
+      object-fit: contain;
+    }
+
+    .unlock-text {
+      color: #ffd700;
+      font-size: 2rem;
+      font-weight: 800;
+      text-shadow: 0 4px 0 #1f2e2a, 0 0 20px rgba(255,215,0,0.5);
+      letter-spacing: 2px;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 10px 0 10px;
+      color: #f5e7c8;
+      text-shadow: 0 3px 0 #1f2e2a, 0 1px 6px #00000099;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .score-box {
+      background: #1e2d28;
+      padding: 8px 22px 8px 18px;
+      border-radius: 100px;
+      font-size: 1.9rem;
+      line-height: 1;
+      box-shadow: inset 0 -4px 0 #4c6b4c, 0 6px 0 #0d1714;
+      border: 1px solid #ad8b5a;
+      color: #fadf9e;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .score-box span {
+      font-size: 1.9rem;
+    }
+
+    .beer-icon {
+      filter: drop-shadow(0 3px 2px #00000099);
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #3a2e1e;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 60px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: #f5e3b3;
+      box-shadow: inset 0 -6px 0 #6b4f2e, 0 6px 0 #1f1a0e;
+      cursor: pointer;
+      transition: all 0.05s linear;
+      border: 1px solid #b78d4b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 1px;
+    }
+
+    .btn:active {
+      transform: translateY(5px);
+      box-shadow: inset 0 -2px 0 #6b4f2e, 0 2px 0 #1f1a0e;
+    }
+
+    .message {
+      background: #1f2822;
+      padding: 6px 20px 6px 16px;
+      border-radius: 40px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #e9d7a7;
+      border-left: 4px solid #dba959;
+      box-shadow: inset 0 -3px 0 #384e38;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .outfit-indicator {
+      background: #1f2822;
+      padding: 4px 16px 4px 14px;
+      border-radius: 40px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f5dba8;
+      border-left: 3px solid #e0b06b;
+      box-shadow: inset 0 -3px 0 #384e38;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @media (max-width: 550px) {
+      .game-wrapper { padding: 12px; }
+      .score-box { font-size: 1.5rem; padding: 6px 14px; }
+      .btn { font-size: 1rem; padding: 6px 14px; }
+      .outfit-indicator { font-size: 0.8rem; padding: 2px 12px; }
+      .message { font-size: 1rem; padding: 4px 14px; min-width: 80px; }
+      .top-right-image { width: 50px; height: 50px; top: 18px; right: 18px; }
+      .unlock-text { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-wrapper" id="gameWrapper">
+  <div class="game-panel" id="gamePanel">
+    <!-- Top-right image -->
+    <img id="topRightImg" class="top-right-image" src="https://files.catbox.moe/dc579q.jpg" alt="Skyler Vox" crossorigin="anonymous">
+
+    <!-- Unlock overlay (score 10) -->
+    <div class="unlock-overlay" id="unlockOverlay">
+      <div class="unlock-text">🎉 SCORE 10!</div>
+      <img id="unlockImg" src="https://files.catbox.moe/j2o6kh.jpg" alt="Unlocked" crossorigin="anonymous">
+    </div>
+
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+    <div class="hud">
+      <div class="score-box">
+        <span class="beer-icon">🍺</span> <span id="scoreDisplay">0</span>
+      </div>
+      <div class="controls">
+        <div class="message" id="statusMessage">⬅️ ➡️</div>
+        <div class="outfit-indicator" id="outfitLabel">📦 box</div>
+        <button class="btn" id="resetButton">↺ NEW</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreSpan = document.getElementById('scoreDisplay');
+    const statusMsg = document.getElementById('statusMessage');
+    const outfitLabel = document.getElementById('outfitLabel');
+    const topRightImg = document.getElementById('topRightImg');
+    const unlockOverlay = document.getElementById('unlockOverlay');
+    const unlockImg = document.getElementById('unlockImg');
+
+    const W = 600, H = 400;
+    const GROUND_Y = 360;
+    const CATCHER_W = 58;
+    const CATCHER_H = 54;
+    const BEER_W = 26;
+    const BEER_H = 32;
+    const MAX_BEERS = 3;
+    const SPAWN_RATE = 26;
+    const UNLOCK_SCORE = 10;
+
+    let catcher = { x: 280, y: GROUND_Y - CATCHER_H + 6 };
+    let beers = [];
+    let score = 0;
+    let gameActive = true;
+    let frameCounter = 0;
+    let spawnTimer = 0;
+    let unlockShown = false;
+
+    let moveLeft = false;
+    let moveRight = false;
+    const MOVE_SPEED = 5.2;
+
+    // ---- IMAGE LOADING ----
+    let topImageLoaded = false;
+    let unlockImageLoaded = false;
+
+    topRightImg.onload = () => { topImageLoaded = true; };
+    topRightImg.onerror = () => { topImageLoaded = false; };
+    unlockImg.onload = () => { unlockImageLoaded = true; };
+    unlockImg.onerror = () => { unlockImageLoaded = false; };
+
+    // Force reload images with cache-bust
+    topRightImg.src = 'https://files.catbox.moe/dc579q.jpg?' + Date.now();
+    unlockImg.src = 'https://files.catbox.moe/j2o6kh.jpg?' + Date.now();
+
+    // ---- RESET ----
+    function resetGame() {
+      score = 0;
+      beers = [];
+      catcher.x = 280;
+      gameActive = true;
+      frameCounter = 0;
+      spawnTimer = 0;
+      moveLeft = false;
+      moveRight = false;
+      unlockShown = false;
+      unlockOverlay.classList.remove('active');
+      updateScoreAndOutfit();
+      statusMsg.innerText = '🍺 Catch!';
+      statusMsg.style.color = '#e9d7a7';
+      outfitLabel.innerHTML = '📦 box';
+    }
+
+    function updateScoreAndOutfit() {
+      scoreSpan.textContent = score;
+      if (score >= UNLOCK_SCORE && !unlockShown) {
+        unlockShown = true;
+        unlockOverlay.classList.add('active');
+        statusMsg.innerText = '🌟 UNLOCKED!';
+        statusMsg.style.color = '#ffd700';
+        outfitLabel.innerHTML = '📦 box';
+        // hide overlay after 3 seconds
+        setTimeout(() => {
+          unlockOverlay.classList.remove('active');
+        }, 3000);
+      }
+    }
+
+    // ---- BEER LOGIC ----
+    function spawnBeer() {
+      if (!gameActive) return;
+      if (beers.length >= MAX_BEERS) return;
+      const x = 20 + Math.random() * (W - BEER_W - 40);
+      const speed = 1.8 + Math.random() * 2.0;
+      beers.push({ x, y: -BEER_H - 4, w: BEER_W, h: BEER_H, speed });
+    }
+
+    function checkCatch(beer) {
+      const cx = catcher.x, cy = catcher.y;
+      const cw = CATCHER_W, ch = CATCHER_H;
+      const bx = beer.x, by = beer.y, bw = beer.w, bh = beer.h;
+      const shrink = 6;
+      return (cx + shrink < bx + bw - shrink &&
+              cx + cw - shrink > bx + shrink &&
+              cy + shrink < by + bh - shrink &&
+              cy + ch - shrink > by + shrink);
+    }
+
+    function update() {
+      if (!gameActive) return;
+
+      if (moveLeft && catcher.x > 4) catcher.x = Math.max(0, catcher.x - MOVE_SPEED);
+      if (moveRight && catcher.x < W - CATCHER_W - 4) catcher.x = Math.min(W - CATCHER_W, catcher.x + MOVE_SPEED);
+
+      spawnTimer++;
+      if (spawnTimer >= SPAWN_RATE) {
+        spawnTimer = 0;
+        spawnBeer();
+        if (beers.length < MAX_BEERS && Math.random() < 0.3) spawnBeer();
+      }
+
+      for (let i = beers.length - 1; i >= 0; i--) {
+        const beer = beers[i];
+        beer.y += beer.speed;
+
+        if (checkCatch(beer)) {
+          score++;
+          updateScoreAndOutfit();
+          statusMsg.innerText = '🍺 +1!';
+          statusMsg.style.color = '#fad98b';
+          beers.splice(i, 1);
+          continue;
+        }
+
+        if (beer.y + beer.h > GROUND_Y + 28) {
+          gameActive = false;
+          statusMsg.innerText = '💀 GAME OVER';
+          statusMsg.style.color = '#e38383';
+          beers.splice(i, 1);
+          for (let j = beers.length - 1; j >= 0; j--) beers.splice(j, 1);
+          return;
+        }
+      }
+
+      if (gameActive && beers.length === 0 && frameCounter % 10 === 0) {
+        statusMsg.innerText = '⬅️ ➡️  catch!';
+        statusMsg.style.color = '#e9d7a7';
+      } else if (gameActive && beers.length > 0 && frameCounter % 6 === 0) {
+        statusMsg.innerText = '🍺  grab it!';
+        statusMsg.style.color = '#f5e3b3';
+      }
+    }
+
+    // ---- DRAWING ----
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      // floor
+      ctx.fillStyle = '#4c3b2b';
+      ctx.fillRect(0, GROUND_Y + 12, W, 20);
+      ctx.fillStyle = '#6b533a';
+      ctx.fillRect(0, GROUND_Y + 12, W, 4);
+      for (let i = 0; i < W; i += 40) {
+        ctx.fillStyle = '#7d6142';
+        ctx.fillRect(i, GROUND_Y + 20, 8, 6);
+      }
+
+      // ---- BEERS ----
+      for (const beer of beers) {
+        const x = beer.x, y = beer.y;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 4;
+
+        ctx.fillStyle = '#d9a343';
+        ctx.beginPath();
+        ctx.roundRect(x, y, BEER_W, BEER_H, 8);
+        ctx.fill();
+
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = '#f7d88c';
+        ctx.beginPath();
+        ctx.roundRect(x + 3, y - 2, 8, 12, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#fcf3d4';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(x + BEER_W/2, y + 6, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#b8863d';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(x + BEER_W - 4, y + 14, 8, 6, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fffbe6';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(x + 6, y + 8, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
+
+      // ---- BEER BOX CATCHER ----
+      const cx = catcher.x, cy = catcher.y;
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
+
+      // Box body
+      const boxGrad = ctx.createLinearGradient(cx, cy, cx + CATCHER_W, cy + CATCHER_H);
+      boxGrad.addColorStop(0, '#c8923a');
+      boxGrad.addColorStop(0.3, '#dba54a');
+      boxGrad.addColorStop(0.7, '#b8832e');
+      boxGrad.addColorStop(1, '#a07028');
+      ctx.fillStyle = boxGrad;
+      ctx.beginPath();
+      ctx.roundRect(cx, cy, CATCHER_W, CATCHER_H, 6);
+      ctx.fill();
+
+      // Box border
+      ctx.strokeStyle = '#7a5a20';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(cx, cy, CATCHER_W, CATCHER_H, 6);
+      ctx.stroke();
+
+      // Beer label
+      ctx.fillStyle = '#f5e3b3';
+      ctx.font = 'bold 18px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍺', cx + CATCHER_W/2, cy + 16);
+
+      ctx.fillStyle = '#fff8e0';
+      ctx.font = 'bold 11px Arial';
+      ctx.fillText('BEER', cx + CATCHER_W/2, cy + 34);
+
+      // Small "box" details
+      ctx.strokeStyle = '#7a5a20';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + 8, cy + 8);
+      ctx.lineTo(cx + CATCHER_W - 8, cy + 8);
+      ctx.stroke();
+
+      // Handle (like a beer crate)
+      ctx.fillStyle = '#7a5a20';
+      ctx.beginPath();
+      ctx.roundRect(cx + 12, cy - 4, 10, 6, 3);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(cx + CATCHER_W - 22, cy - 4, 10, 6, 3);
+      ctx.fill();
+
+      // Shadow under box
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Draw the top-right image on canvas as fallback (if img tag fails)
+      if (topImageLoaded && topRightImg.complete && topRightImg.naturalWidth > 0) {
+        // already displayed via HTML img tag
+      } else {
+        // fallback: draw text
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(W - 100, 10, 85, 85);
+        ctx.fillStyle = '#f5e3b3';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('📸', W - 57, 55);
+      }
+    }
+
+    // helper
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      this.moveTo(x + r, y);
+      this.lineTo(x + w - r, y);
+      this.quadraticCurveTo(x + w, y, x + w, y + r);
+      this.lineTo(x + w, y + h - r);
+      this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      this.lineTo(x + r, y + h);
+      this.quadraticCurveTo(x, y + h, x, y + h - r);
+      this.lineTo(x, y + r);
+      this.quadraticCurveTo(x, y, x + r, y);
+      this.closePath();
+      return this;
+    };
+
+    function gameLoop() {
+      frameCounter++;
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ---- EVENTS ----
+    function keyDownHandler(e) {
+      const key = e.key;
+      if (key === 'ArrowLeft' || key === 'Left' || key === 'a' || key === 'A') { moveLeft = true; e.preventDefault(); }
+      else if (key === 'ArrowRight' || key === 'Right' || key === 'd' || key === 'D') { moveRight = true; e.preventDefault(); }
+      else if (key === 'r' || key === 'R') { resetGame(); e.preventDefault(); }
+      else if (key === ' ' || key === 'Space') e.preventDefault();
+    }
+
+    function keyUpHandler(e) {
+      const key = e.key;
+      if (key === 'ArrowLeft' || key === 'Left' || key === 'a' || key === 'A') { moveLeft = false; e.preventDefault(); }
+      else if (key === 'ArrowRight' || key === 'Right' || key === 'd' || key === 'D') { moveRight = false; e.preventDefault(); }
+      else if (key === ' ' || key === 'Space') e.preventDefault();
+    }
+
+    function handlePointerStart(e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      if (clientX == null) return;
+      const canvasX = (clientX - rect.left) * scaleX;
+      if (canvasX < 0 || canvasX > W) return;
+      if (gameActive) catcher.x = Math.min(W - CATCHER_W, Math.max(0, canvasX - CATCHER_W/2));
+    }
+
+    function handlePointerMove(e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      if (clientX == null) return;
+      const canvasX = (clientX - rect.left) * scaleX;
+      if (canvasX < 0 || canvasX > W) return;
+      if (gameActive) catcher.x = Math.min(W - CATCHER_W, Math.max(0, canvasX - CATCHER_W/2));
+    }
+
+    document.getElementById('resetButton').addEventListener('click', resetGame);
+
+    window.addEventListener('keydown', keyDownHandler);
+    window.addEventListener('keyup', keyUpHandler);
+
+    canvas.addEventListener('mousedown', handlePointerStart);
+    canvas.addEventListener('mousemove', (e) => { if (e.buttons & 1) handlePointerMove(e); });
+    canvas.addEventListener('touchstart', handlePointerStart, { passive: false });
+    canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    canvas.addEventListener('touchend', (e) => e.preventDefault());
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    resetGame();
+    gameLoop();
+  })();
+</script>
+</body>
+</html>
